@@ -49,6 +49,7 @@ extern __off64_t lseek64 __P ((int __fd, __off64_t __offset, int __whence));
 #include	<syslog.h>
 #include	<stdbool.h>
 #include	<signal.h>
+#include	<syslog.h>
 /* Newer glibc requires sys/sysmacros.h directly for makedev() */
 #include	<sys/sysmacros.h>
 #ifdef __dietlibc__
@@ -1917,13 +1918,13 @@ static inline int xasprintf(char **strp, const char *fmt, ...) {
 #ifdef DEBUG
 #define pr_err(fmt, args...) fprintf(stderr, "%s: %s: "fmt, Name, __func__, ##args)
 #else
-#define pr_err(fmt, args...) fprintf(stderr, "%s: "fmt, Name, ##args)
+#define pr_err(fmt, args...) syslog(LOG_ERR, fmt, ##args)
 #endif
 #define cont_err(fmt ...) fprintf(stderr, "       " fmt)
 
 #define pr_info(fmt, args...) printf("%s: "fmt, Name, ##args)
 
-#define pr_vrb(fmt, arg...) ((void)(verbose && pr_err(fmt, ##arg)))
+#define pr_vrb(fmt, args...) syslog(LOG_ERR, fmt, ##args)
 
 void *xmalloc(size_t len);
 void *xrealloc(void *ptr, size_t len);

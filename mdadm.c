@@ -307,7 +307,6 @@ int main(int argc, char *argv[])
 			/* everybody happy ! */
 		} else if (mode && newmode != mode) {
 			/* not allowed.. */
-			pr_err("");
 			if (option_index >= 0)
 				fprintf(stderr, "--%s", long_options[option_index].name);
 			else
