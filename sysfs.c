@@ -1010,10 +1010,18 @@ static struct dev_sysfs_rule *sysfs_rules;
 void sysfs_rules_apply(char *devnm, struct mdinfo *dev)
 {
 	struct dev_sysfs_rule *rules = sysfs_rules;
-
 	while (rules) {
 		struct sysfs_entry *ent = rules->entry;
 		int match  = 0;
+
+		pr_syslog("SYSFS: Processing SYSFS LINE devname: '%s'\n",
+			  rules->devname ? rules->devname : "empty");
+
+		if (rules->uuid_set)
+			pr_syslog("SYSFS uuid: %x %x %x %x\n", rules->uuid[0], rules->uuid[1], rules->uuid[2], rules->uuid[3]);
+		else
+			pr_syslog("SYSFS uuid: none\n");
+		pr_syslog("\n");
 
 		if (!rules->uuid_set) {
 			if (rules->devname)
@@ -1023,12 +1031,18 @@ void sysfs_rules_apply(char *devnm, struct mdinfo *dev)
 				       sizeof(int[4])) == 0;
 		}
 
+		if (!match)
+			pr_syslog("SYSFS: no match found\n");
+
 		while (match && ent) {
+			pr_syslog("SYSFS: Writing '%s' to '%s'\n", ent->value, ent->name);
 			if (sysfs_rules_apply_check(dev, ent) < 0)
-				pr_err("SYSFS: failed to write '%s' to '%s'\n",
+				pr_syslog("SYSFS: failed to check '%s' to '%s'\n",
 					ent->value, ent->name);
 			else
-				sysfs_set_str(dev, NULL, ent->name, ent->value);
+				if (sysfs_set_str(dev, NULL, ent->name, ent->value))
+					pr_syslog("SYSFS: failed to write '%s' to '%s'\n",
+						  ent->value, ent->name);
 			ent = ent->next;
 		}
 		rules = rules->next;

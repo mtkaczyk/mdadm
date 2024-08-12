@@ -1929,6 +1929,8 @@ static inline int xasprintf(char **strp, const char *fmt, ...) {
 
 #define pr_vrb(fmt, arg...) ((void)(verbose && pr_err(fmt, ##arg)))
 
+#define pr_syslog(fmt, arg...) (syslog(LOG_ERR, fmt, ##arg))
+
 void *xmalloc(size_t len);
 void *xrealloc(void *ptr, size_t len);
 void *xcalloc(size_t num, size_t size);
