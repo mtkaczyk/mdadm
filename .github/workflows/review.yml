@@ -31,6 +31,33 @@ jobs:
           run: hardening-check mdadm
         - name: hardening-check mdmon
           run: hardening-check mdmon
+  musl:
+    runs-on: ubuntu-24.04
+    name: Compilation with musl
+    steps:
+        - uses: actions/checkout@v4
+        - name: 'Add ubuntu repository and install dependencies'
+          run: .github/tools/install_ubuntu_packages.sh musl
+        - name: 'Check if musl was installed correctly'
+          run: musl-gcc --version
+        - name: "Configure musl environment"
+          run: |
+            sudo mkdir /usr/include/x86_64-linux-musl/asm
+            sudo sh -c 'echo "#include <asm-generic/types.h>" > /usr/include/x86_64-linux-musl/asm/types.h'
+            sudo sh -c 'echo "#ifndef __ASM_X86_BITSPERLONG_H" > /usr/include/x86_64-linux-musl/asm/bitsperlong.h'
+            sudo sh -c 'echo "#define __ASM_X86_BITSPERLONG_H" >> /usr/include/x86_64-linux-musl/asm/bitsperlong.h'
+            sudo sh -c 'echo "#define __BITS_PER_LONG 64" >>  /usr/include/x86_64-linux-musl/asm/bitsperlong.h'
+            sudo sh -c 'echo "#include <asm-generic/bitsperlong.h>" >> /usr/include/x86_64-linux-musl/asm/bitsperlong.h'
+            sudo sh -c 'echo "#endif /* __ASM_X86_BITSPERLONG_H */" >> /usr/include/x86_64-linux-musl/asm/bitsperlong.h'
+            sudo sh -c 'echo "#ifndef _ASM_X86_BYTEORDER_H" > /usr/include/x86_64-linux-musl/asm/byteorder.h'
+            sudo sh -c 'echo "#define _ASM_X86_BYTEORDER_H" >> /usr/include/x86_64-linux-musl/asm/byteorder.h'
+            sudo sh -c 'echo "#include <linux/byteorder/little_endian.h>" >> /usr/include/x86_64-linux-musl/asm/byteorder.h'
+            sudo sh -c 'echo "#endif /* _ASM_X86_BYTEORDER_H */" >> /usr/include/x86_64-linux-musl/asm/byteorder.h'
+            sudo sh -c 'echo "#define __WORDSIZE 64" > /usr/include/x86_64-linux-musl/bits/wordsize.h'
+            sudo sh -c 'echo "#define __WORDSIZE_TIME64_COMPAT32 1" >> /usr/include/x86_64-linux-musl/bits/wordsize.h'
+            sudo sh -c 'echo "#define __WORDSIZE_TIME64_COMPAT32 0" >> /usr/include/x86_64-linux-musl/bits/wordsize.h'
+        - name: 'Make'
+          run: V=1 make -j$(nproc) CC=musl-gcc CFLAGS="-I /usr/include/x86_64-linux-musl -I /usr/lib/gcc/x86_64-linux-gnu/13/include -I/usr/include"
   checkpatch:
     runs-on: ubuntu-latest
     name: checkpatch review
