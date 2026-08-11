@@ -1133,7 +1133,23 @@ static int load_ddf_global(int fd, struct ddf_super *super, char *devname)
 	super->max_part = be16_to_cpu(super->active->max_partitions);
 	super->mppe = be16_to_cpu(super->active->max_primary_element_entries);
 	super->conf_rec_len = be16_to_cpu(super->active->config_record_len);
+	if (super->conf_rec_len * 512 <
+	    offsetof(struct vd_config, phys_refnum) +
+	    (sizeof(__u32) + sizeof(be64)) * super->mppe) {
+		pr_err("failed to load the DDF global information sections\n");
+		return 2;
+	}
 	return 0;
+}
+
+static unsigned int ddf_max_primary_entries(const struct ddf_super *ddf)
+{
+	unsigned int record_size = ddf->conf_rec_len * 512;
+
+	if (record_size < offsetof(struct vd_config, phys_refnum))
+		return 0;
+	return (record_size - offsetof(struct vd_config, phys_refnum)) /
+		(sizeof(__u32) + sizeof(be64));
 }
 
 #define DDF_UNUSED_BVD 0xff
@@ -1592,11 +1608,22 @@ static void examine_vd(int n, struct ddf_super *sb, char *guid)
 		unsigned int i;
 		struct vd_config *vc = &vcl->conf;
 		unsigned int max_pdes;
+		unsigned int max_count = ddf_max_primary_entries(sb);
+		unsigned int prim_count = be16_to_cpu(vc->prim_elmnt_count);
+
 
 		if (!be32_eq(calc_crc(vc, crl*512), vc->crc))
 			continue;
 		if (memcmp(vc->guid, guid, DDF_GUID_LEN) != 0)
 			continue;
+
+		if (max_count > sb->mppe)
+			max_count = sb->mppe;
+		if (prim_count > max_count) {
+			dprintf("bad prim_elmnt_count %u > available %u\n",
+			    prim_count, max_count);
+			prim_count = max_count;
+		}
 
 		/* Ok, we know about this VD, let's give more details */
 		printf(" Raid Devices[%d] : %d (", n,
@@ -1605,7 +1632,7 @@ static void examine_vd(int n, struct ddf_super *sb, char *guid)
 				offsetof(struct phys_disk, entries),
 				sizeof(sb->phys->entries[0]),
 				be16_to_cpu(sb->phys->max_pdes));
-		for (i = 0; i < be16_to_cpu(vc->prim_elmnt_count); i++) {
+		for (i = 0; i < prim_count; i++) {
 			unsigned int j;
 
 			for (j = 0; j < max_pdes; j++)
