@@ -4627,12 +4627,29 @@ static int load_imsm_mpb(int fd, struct intel_super *super, char *devname)
 		return 2;
 	}
 
+	/* Sanity check the on-disk mpb_size before trusting it for the
+	 * allocation below. A value of 0 (or anything smaller than the
+	 * anchor itself) would result in a zero/undersized allocation
+	 * while the subsequent memcpy() still writes a full sector into
+	 * it. Also guard against implausibly large values that don't
+	 * correspond to any real IMSM metadata layout.
+	 */
+	__u32 mpb_size = __le32_to_cpu(anchor->mpb_size);
+
+	if (mpb_size < sizeof(struct imsm_super) ||
+	    mpb_size > MPB_SECTOR_CNT * sector_size) {
+		if (devname)
+			pr_err("Bad mpb_size (%u) on %s\n", mpb_size, devname);
+		free(anchor);
+		return 2;
+	}
+
 	__free_imsm(super, 0);
 	/*  reload capability and hba */
 
 	/* capability and hba must be updated with new super allocation */
 	find_intel_hba_capability(fd, super, devname);
-	super->len = ROUND_UP(anchor->mpb_size, sector_size);
+	super->len = ROUND_UP(mpb_size, sector_size);
 	if (posix_memalign(&super->buf, MAX_SECTOR_SIZE, super->len) != 0) {
 		if (devname)
 			pr_err("unable to allocate %zu byte mpb buffer\n",
