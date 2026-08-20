@@ -298,6 +298,9 @@ static void examine_super1(struct supertype *st, char *homehost)
 	if (__le32_to_cpu(sb->feature_map) & MD_FEATURE_RECOVERY_OFFSET)
 		printf("Recovery Offset : %llu sectors\n",
 		       (unsigned long long)__le64_to_cpu(sb->recovery_offset));
+	if (__le64_to_cpu(sb->resync_offset) != MaxSector)
+		printf("  Resync Offset : %llu sectors\n",
+		       (unsigned long long)__le64_to_cpu(sb->resync_offset));
 
 	st->ss->getinfo_super(st, &info, NULL);
 	if (info.space_after != 1 &&

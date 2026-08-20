@@ -186,6 +186,10 @@ static void examine_super0(struct supertype *st, char *homehost)
 	printf("    Update Time : %.24s\n", ctime(&atime));
 	printf("          State : %s\n",
 	       (sb->state&(1 << MD_SB_CLEAN)) ? "clean":"active");
+	/* recovery_cp is a legacy name, from before sync actions got split */
+	if (sb->recovery_cp != (__u32)MaxSector)
+		printf("  Resync Offset : %llu sectors\n",
+		       (unsigned long long)sb->recovery_cp);
 	if (sb->state & (1 << MD_SB_BITMAP_PRESENT))
 		printf("Internal Bitmap : present\n");
 	printf(" Active Devices : %d\n", sb->active_disks);
