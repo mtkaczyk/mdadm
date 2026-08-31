@@ -613,36 +613,29 @@ char *fname_from_uuid(struct mdinfo *info, char *buf)
 #endif
 }
 
-int check_ext2(int fd, char *name)
+/**
+ * check_ext2() - Check for an ext2fs file system.
+ * @fd: file descriptor of the device to check.
+ * @name: name of the device to check.
+ *
+ * Superblock is always 1K at 1K offset
+ */
+bool check_ext2(int fd, char *name)
 {
-	/*
-	 * Check for an ext2fs file system.
-	 * Superblock is always 1K at 1K offset
-	 *
-	 * s_magic is le16 at 56 == 0xEF53
-	 * report mtime - le32 at 44
-	 * blocks - le32 at 4
-	 * logblksize - le32 at 24
-	 */
 	unsigned char sb[1024];
-	time_t mtime;
-	unsigned long long size;
-	int bsize;
-	if (lseek(fd, 1024,0)!= 1024)
-		return 0;
-	if (read(fd, sb, 1024)!= 1024)
-		return 0;
-	if (sb[56] != 0x53 || sb[57] != 0xef)
-		return 0;
 
-	mtime = sb[44]|(sb[45]|(sb[46]|sb[47]<<8)<<8)<<8;
-	bsize = sb[24]|(sb[25]|(sb[26]|sb[27]<<8)<<8)<<8;
-	size = sb[4]|(sb[5]|(sb[6]|sb[7]<<8)<<8)<<8;
-	size <<= bsize;
-	pr_info("%s appears to contain an ext2fs file system\n",
-		name);
-	pr_info("size=%lluK  mtime=%s", size, ctime(&mtime));
-	return 1;
+	if (lseek(fd, 1024, SEEK_SET) != 1024)
+		return false;
+
+	if (read(fd, sb, sizeof(sb)) != sizeof(sb))
+		return false;
+
+	/* s_magic is le16 at 56 == 0xEF53 */
+	if (sb[56] != 0x53 || sb[57] != 0xef)
+		return false;
+
+	pr_info("%s appears to contain an ext2fs file system\n", name);
+	return true;
 }
 
 int check_reiser(int fd, char *name)
